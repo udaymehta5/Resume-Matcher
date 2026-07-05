@@ -15,6 +15,12 @@ from skills_dictionary import (
     is_soft_skill
 )
 
+# Named constants for hybrid scoring weights (Option A)
+# Rebalanced from 70/30 to 85/15 because skill coverage is a much stronger, more reliable fit signal
+# than raw term-frequency similarity between structurally different document types (resumes vs JDs).
+DEFAULT_SKILLS_WEIGHT = 0.85
+DEFAULT_TFIDF_WEIGHT = 0.15
+
 # Load spaCy NLP model lazily/globally
 try:
     nlp = spacy.load("en_core_web_sm")
@@ -242,6 +248,7 @@ def analyze_resume(raw_resume_text: str, raw_jd_text: str) -> Dict:
     3. TF-IDF Cosine Similarity Calculation
     4. Hard Skills Weighted Primary Coverage + Soft Skill Informational Bonus
     5. Adaptive Dynamic Reweighting Guard for Low JD Skill Counts
+    6. Fit-Based Score Floor Guard (Option B) to prevent document-style TF-IDF compression bias.
     """
     # 1. Extract skills
     resume_skills = extract_skills(raw_resume_text)
@@ -294,8 +301,7 @@ def analyze_resume(raw_resume_text: str, raw_jd_text: str) -> Dict:
     # 3. Compute raw TF-IDF Cosine Similarity
     cosine_sim = compute_match_score(cleaned_relevant_resume, cleaned_relevant_jd)
 
-    # 4. ADAPTIVE HYBRID REWEIGHTING GUARD
-    # If total skills in JD < 5, dynamically re-weight toward TF-IDF similarity to prevent low skill count from artificially tanking the score.
+    # 4. ADAPTIVE HYBRID REWEIGHTING GUARD (Option A: 85% Skills / 15% TF-IDF)
     total_jd_skills = len(jd_skills)
 
     if total_jd_skills == 0:
@@ -309,9 +315,20 @@ def analyze_resume(raw_resume_text: str, raw_jd_text: str) -> Dict:
     elif total_jd_skills == 4:
         tfidf_weight, skills_weight = 0.40, 0.60
     else:
-        tfidf_weight, skills_weight = 0.30, 0.70
+        # Option A: Default weighting rebalanced to 85% Skills Coverage and 15% TF-IDF Cosine Similarity
+        tfidf_weight, skills_weight = DEFAULT_TFIDF_WEIGHT, DEFAULT_SKILLS_WEIGHT
 
     blended_match_score = round((tfidf_weight * cosine_sim) + (skills_weight * overall_skills_coverage), 2)
+
+    # Option B: FIT-BASED SCORE FLOOR GUARD
+    # Document-Type Asymmetry Guard: Resumes are concise while JDs are repetitive, causing raw TF-IDF
+    # cosine similarity to return low values (~15-20%) even for 100% skill matches.
+    # We enforce minimum score floors based on Hard Skills Coverage to prevent TF-IDF structural compression
+    # from capping perfect or near-perfect candidate fits below their true performance band.
+    if hard_skills_coverage >= 100.0:
+        blended_match_score = max(blended_match_score, 85.0)
+    elif hard_skills_coverage >= 80.0:
+        blended_match_score = max(blended_match_score, 75.0)
 
     # Generate warning banner if JD skill count is below threshold (< 5)
     low_skill_count_warning = None
