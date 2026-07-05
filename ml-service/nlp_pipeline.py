@@ -4,7 +4,16 @@ import spacy
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from skills_dictionary import SKILLS_DB, normalize_skill, get_skill_category
+from skills_dictionary import (
+    SKILLS_DB,
+    HARD_SKILLS_DB,
+    SOFT_SKILLS_DB,
+    AMBIGUOUS_SHORT_SKILLS,
+    GENERIC_STOPWORDS,
+    normalize_skill,
+    get_skill_category,
+    is_soft_skill
+)
 
 # Load spaCy NLP model lazily/globally
 try:
@@ -34,8 +43,9 @@ def clean_text(text: str) -> str:
 def extract_skills(raw_text: str) -> Set[str]:
     """
     Extracts skill keywords from raw text by:
-    1. Direct regex matching against SKILLS_DB (using lowercased text)
-    2. spaCy Noun Chunks & Entity recognition matching (using original-case text for proper entity detection)
+    1. Regex matching against SKILLS_DB with strict rules for ambiguous short tokens ("go", "r", "c")
+    2. spaCy Noun Chunks & Entity recognition matching
+    3. Filtering out generic stopwords and false positives
     """
     if not raw_text:
         return set()
@@ -43,25 +53,48 @@ def extract_skills(raw_text: str) -> Set[str]:
     found_skills = set()
     text_lower = raw_text.lower()
 
-    # 1. Direct regex/string matching against pre-defined skills database
+    # 1. Direct regex/string matching against skills database
     for skill in SKILLS_DB:
-        # Use negative lookaround assertions (?<![a-zA-Z0-9_]) and (?![a-zA-Z0-9_]) instead of \b
-        # so that skills with special characters (e.g. "c++", "c#", "node.js", ".net", "asp.net") match correctly
+        skill_norm = normalize_skill(skill)
+        
+        # Strict handling for ambiguous short words ("go", "r", "c") to prevent false positives in general text
+        if skill in AMBIGUOUS_SHORT_SKILLS:
+            if skill == "go":
+                # Match "Go" or "Golang" (must be capitalized "Go" or explicit "Golang")
+                pattern_go = r'(?<![a-zA-Z0-9_])(Go|Golang)(?![a-zA-Z0-9_])'
+                if re.search(pattern_go, raw_text):
+                    found_skills.add("go")
+            elif skill == "r":
+                # Match standalone uppercase "R" (or "R programming", "R language")
+                pattern_r = r'(?<![a-zA-Z0-9_])(R)(?![a-zA-Z0-9_])'
+                if re.search(pattern_r, raw_text) and not re.search(r'(?i)\b(r&d|toys r us)\b', raw_text):
+                    found_skills.add("r")
+            elif skill == "c":
+                # Match standalone uppercase "C" (or "C programming", "C language")
+                pattern_c = r'(?<![a-zA-Z0-9_])(C)(?![a-zA-Z0-9_])'
+                if re.search(pattern_c, raw_text):
+                    found_skills.add("c")
+            continue
+        
+        # Standard skill pattern with boundary assertions
         pattern = r'(?<![a-zA-Z0-9_])' + re.escape(skill) + r'(?![a-zA-Z0-9_])'
         if re.search(pattern, text_lower):
-            found_skills.add(normalize_skill(skill))
+            if skill_norm not in GENERIC_STOPWORDS:
+                found_skills.add(skill_norm)
 
-    # 2. spaCy Noun Chunks & Entities matching (uses ORIGINAL-CASE text for capitalization sensitivity)
+    # 2. spaCy Noun Chunks & Entities matching
     doc = nlp(raw_text)
     for chunk in doc.noun_chunks:
         chunk_str = chunk.text.strip().lower()
-        if chunk_str in SKILLS_DB:
-            found_skills.add(normalize_skill(chunk_str))
+        if chunk_str in SKILLS_DB and chunk_str not in GENERIC_STOPWORDS:
+            if chunk_str not in AMBIGUOUS_SHORT_SKILLS or (chunk_str == "go" and re.search(r'\bGo\b', chunk.text)):
+                found_skills.add(normalize_skill(chunk_str))
 
     for ent in doc.ents:
         ent_str = ent.text.strip().lower()
-        if ent_str in SKILLS_DB:
-            found_skills.add(normalize_skill(ent_str))
+        if ent_str in SKILLS_DB and ent_str not in GENERIC_STOPWORDS:
+            if ent_str not in AMBIGUOUS_SHORT_SKILLS or (ent_str == "go" and re.search(r'\bGo\b', ent.text)):
+                found_skills.add(normalize_skill(ent_str))
 
     return found_skills
 
@@ -82,7 +115,6 @@ def extract_skill_relevant_text(raw_text: str, detected_skills: Set[str]) -> str
     
     for line in lines:
         line_lower = line.lower()
-        # Use negative lookarounds instead of \b to match skills with trailing/leading symbols (c++, c#, node.js, asp.net)
         contains_skill = any(
             re.search(r'(?<![a-zA-Z0-9_])' + re.escape(skill) + r'(?![a-zA-Z0-9_])', line_lower)
             for skill in skills_lookup
@@ -148,10 +180,7 @@ def extract_top_keywords(raw_resume_text: str, raw_jd_text: str, top_n: int = 10
 
 def compute_resume_health(raw_text: str) -> Dict:
     """
-    Calculates Resume Formatting & Quality Health Score based on:
-    - Word count (optimal range 300-800 words)
-    - Action verb density (spaCy POS tagging for verbs)
-    - Structural suggestions & tips
+    Calculates Resume Formatting & Quality Health Score.
     """
     words = raw_text.split()
     word_count = len(words)
@@ -208,26 +237,50 @@ def categorize_skills(skill_set: Set[str]) -> Dict[str, List[str]]:
 def analyze_resume(raw_resume_text: str, raw_jd_text: str) -> Dict:
     """
     Runs the complete NLP analysis pipeline:
-    1. Skill Extraction (Resume & JD using original-case for spaCy NER)
-    2. Symmetric Skill-Relevant Noise Filtering (uses intersection of skills)
+    1. Domain-adaptive Skill Extraction (separating Hard vs Soft Skills)
+    2. Symmetric Skill-Relevant Noise Filtering
     3. TF-IDF Cosine Similarity Calculation
-    4. Hybrid Blended Match Score Formula: (0.3 * Cosine Similarity) + (0.7 * Skills Coverage)
-    5. Skill Categorization & Resume Health Diagnostics
+    4. Hard Skills Weighted Primary Coverage + Soft Skill Informational Bonus
+    5. Adaptive Dynamic Reweighting Guard for Low JD Skill Counts
     """
-    # 1. Extract skills (using original case for spaCy NER)
+    # 1. Extract skills
     resume_skills = extract_skills(raw_resume_text)
     jd_skills = extract_skills(raw_jd_text)
+
+    # Separate Hard Skills vs Soft Skills
+    jd_hard_skills = {s for s in jd_skills if not is_soft_skill(s)}
+    jd_soft_skills = {s for s in jd_skills if is_soft_skill(s)}
+
+    resume_hard_skills = {s for s in resume_skills if not is_soft_skill(s)}
+    resume_soft_skills = {s for s in resume_skills if is_soft_skill(s)}
+
+    matched_hard_skills = sorted(list(resume_hard_skills.intersection(jd_hard_skills)))
+    missing_hard_skills = sorted(list(jd_hard_skills - resume_hard_skills))
+
+    matched_soft_skills = sorted(list(resume_soft_skills.intersection(jd_soft_skills)))
+    missing_soft_skills = sorted(list(jd_soft_skills - resume_soft_skills))
 
     matched_skills = sorted(list(resume_skills.intersection(jd_skills)))
     missing_skills = sorted(list(jd_skills - resume_skills))
 
-    # Calculate Skills Coverage Percentage
-    total_jd_skills = len(jd_skills)
-    skills_coverage = round((len(matched_skills) / total_jd_skills * 100), 2) if total_jd_skills > 0 else 0.0
+    # Compute Hard Skills Coverage & Soft Skills Coverage
+    total_jd_hard_skills = len(jd_hard_skills)
+    hard_skills_coverage = round((len(matched_hard_skills) / total_jd_hard_skills * 100), 2) if total_jd_hard_skills > 0 else 0.0
+
+    total_jd_soft_skills = len(jd_soft_skills)
+    soft_skills_coverage = round((len(matched_soft_skills) / total_jd_soft_skills * 100), 2) if total_jd_soft_skills > 0 else 100.0
+
+    # Weighted Skill Coverage: Hard skills account for 90%, Soft skills account for 10%
+    if total_jd_hard_skills > 0 and total_jd_soft_skills > 0:
+        overall_skills_coverage = round((0.90 * hard_skills_coverage) + (0.10 * soft_skills_coverage), 2)
+    elif total_jd_hard_skills > 0:
+        overall_skills_coverage = hard_skills_coverage
+    elif total_jd_soft_skills > 0:
+        overall_skills_coverage = soft_skills_coverage
+    else:
+        overall_skills_coverage = 0.0
 
     # 2. Symmetric Skill-Relevant Noise Filtering
-    # Filter BOTH resume and JD using the intersection of skills (skills actually relevant to comparison).
-    # If intersection is empty, fall back to union of skills so filtering doesn't return empty text.
     comparison_skills = resume_skills.intersection(jd_skills)
     if not comparison_skills:
         comparison_skills = resume_skills.union(jd_skills)
@@ -241,11 +294,32 @@ def analyze_resume(raw_resume_text: str, raw_jd_text: str) -> Dict:
     # 3. Compute raw TF-IDF Cosine Similarity
     cosine_sim = compute_match_score(cleaned_relevant_resume, cleaned_relevant_jd)
 
-    # 4. HYBRID BLENDED SCORE: 30% Cosine Similarity + 70% Skills Coverage
-    if total_jd_skills > 0:
-        blended_match_score = round((0.3 * cosine_sim) + (0.7 * skills_coverage), 2)
+    # 4. ADAPTIVE HYBRID REWEIGHTING GUARD
+    # If total skills in JD < 5, dynamically re-weight toward TF-IDF similarity to prevent low skill count from artificially tanking the score.
+    total_jd_skills = len(jd_skills)
+
+    if total_jd_skills == 0:
+        tfidf_weight, skills_weight = 1.0, 0.0
+    elif total_jd_skills == 1:
+        tfidf_weight, skills_weight = 0.80, 0.20
+    elif total_jd_skills == 2:
+        tfidf_weight, skills_weight = 0.65, 0.35
+    elif total_jd_skills == 3:
+        tfidf_weight, skills_weight = 0.50, 0.50
+    elif total_jd_skills == 4:
+        tfidf_weight, skills_weight = 0.40, 0.60
     else:
-        blended_match_score = cosine_sim
+        tfidf_weight, skills_weight = 0.30, 0.70
+
+    blended_match_score = round((tfidf_weight * cosine_sim) + (skills_weight * overall_skills_coverage), 2)
+
+    # Generate warning banner if JD skill count is below threshold (< 5)
+    low_skill_count_warning = None
+    if total_jd_skills < 5:
+        low_skill_count_warning = (
+            f"Low skill count detected in Job Description ({total_jd_skills} skill{'s' if total_jd_skills != 1 else ''}). "
+            f"Score re-weighted ({int(tfidf_weight*100)}% TF-IDF / {int(skills_weight*100)}% Skills Coverage) for higher accuracy."
+        )
 
     categorized_matched = categorize_skills(set(matched_skills))
     categorized_missing = categorize_skills(set(missing_skills))
@@ -256,14 +330,25 @@ def analyze_resume(raw_resume_text: str, raw_jd_text: str) -> Dict:
     return {
         "match_score": blended_match_score,
         "cosine_similarity": cosine_sim,
-        "skills_coverage": skills_coverage,
+        "skills_coverage": overall_skills_coverage,
+        "hard_skills_coverage": hard_skills_coverage,
+        "soft_skills_coverage": soft_skills_coverage,
         "matched_skills": matched_skills,
         "missing_skills": missing_skills,
+        "matched_hard_skills": matched_hard_skills,
+        "missing_hard_skills": missing_hard_skills,
+        "matched_soft_skills": matched_soft_skills,
+        "missing_soft_skills": missing_soft_skills,
         "categorized_matched": categorized_matched,
         "categorized_missing": categorized_missing,
         "resume_word_count": len(raw_resume_text.split()),
         "resume_health": resume_health,
         "top_keywords": top_keywords,
-        "total_jd_skills_found": len(jd_skills),
-        "total_resume_skills_found": len(resume_skills)
+        "total_jd_skills_found": total_jd_skills,
+        "total_resume_skills_found": len(resume_skills),
+        "low_skill_count_warning": low_skill_count_warning,
+        "weights_used": {
+            "tfidf_weight": tfidf_weight,
+            "skills_weight": skills_weight
+        }
     }

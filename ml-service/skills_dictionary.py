@@ -1,57 +1,38 @@
 """
-Starter list of ~150+ common technical and soft skills for resume matching,
-organized by category for detailed breakdown analytics.
+Domain-adaptive skills dictionary loader and canonical skill mapping.
+Loads structured taxonomy from skills_taxonomy.json and distinguishes hard vs soft skills.
 """
 
-CATEGORIZED_SKILLS = {
-    "Programming Languages": {
-        "python", "javascript", "typescript", "java", "c++", "c#", "golang", "go", "rust", "ruby", 
-        "php", "swift", "kotlin", "scala", "r", "matlab", "perl", "sql", "bash", "powershell", "html", "css",
-        "sass", "less", "solidity", "dart"
-    },
-    "Frameworks & Web": {
-        "react", "react.js", "reactjs", "vue", "vue.js", "vuejs", "angular", "next.js", "nextjs",
-        "nuxt.js", "svelte", "ember.js", "tailwind css", "tailwindcss", "bootstrap", "material ui", 
-        "chakra ui", "jquery", "webgl", "three.js", "redux", "mobx", "zustand", "vite", "webpack",
-        "node.js", "nodejs", "express", "express.js", "fastapi", "django", "flask", "spring", 
-        "spring boot", "ruby on rails", "rails", "asp.net", "laravel", "nest.js", "nestjs", 
-        "graphql", "rest api", "restful api", "grpc", "websockets", "microservices"
-    },
-    "Databases & Caching": {
-        "mongodb", "postgresql", "postgres", "mysql", "sqlite", "oracle", "sql server", "redis", 
-        "elasticsearch", "dynamodb", "cassandra", "neo4j", "firebase", "supabase", "mariadb", 
-        "prisma", "sequelize", "mongoose"
-    },
-    "Cloud & DevOps": {
-        "aws", "amazon web services", "azure", "google cloud", "gcp", "docker", "kubernetes", 
-        "terraform", "ansible", "jenkins", "github actions", "gitlab ci", "circleci", "nginx", 
-        "apache", "linux", "unix", "ci/cd", "prometheus", "grafana", "serverless", "cloudformation"
-    },
-    "Machine Learning & AI": {
-        "machine learning", "deep learning", "nlp", "natural language processing", "data science", 
-        "scikit-learn", "sklearn", "tensorflow", "pytorch", "keras", "opencv", "spacy", "nltk", 
-        "pandas", "numpy", "scipy", "matplotlib", "seaborn", "data analytics", "data mining", 
-        "computer vision", "big data", "spark", "hadoop", "tableau", "power bi", "feature engineering"
-    },
-    "Tools & Methodology": {
-        "git", "github", "gitlab", "bitbucket", "jira", "confluence", "trello", "postman", "swagger", 
-        "agile", "scrum", "kanban", "test driven development", "tdd", "unit testing", "jest", 
-        "cypress", "selenium", "pytest", "mocha", "chai", "object oriented programming", "oop"
-    },
-    "Soft Skills": {
-        "communication", "leadership", "problem solving", "teamwork", "collaboration", "critical thinking", 
-        "time management", "project management", "adaptability", "creativity", "emotional intelligence", 
-        "conflict resolution", "decision making", "negotiation", "presentation skills", "stakeholder management", 
-        "cross-functional teamwork", "mentorship", "strategic thinking", "analytical skills", "troubleshooting",
-        "customer focus", "agile project management", "scrum master", "product management"
-    }
-}
+import json
+import os
+from typing import Dict, Set
 
-# Flattened set of all skills
-SKILLS_DB = set().union(*CATEGORIZED_SKILLS.values())
+TAXONOMY_FILE = os.path.join(os.path.dirname(__file__), "skills_taxonomy.json")
+
+def _load_taxonomy() -> Dict[str, Set[str]]:
+    if not os.path.exists(TAXONOMY_FILE):
+        raise FileNotFoundError(f"Taxonomy file not found at {TAXONOMY_FILE}")
+    
+    with open(TAXONOMY_FILE, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    return {category: set(skills) for category, skills in data.items()}
+
+# Categorized skills map
+CATEGORIZED_SKILLS: Dict[str, Set[str]] = _load_taxonomy()
+
+# Separate Hard Skills and Soft Skills
+SOFT_SKILLS_DB: Set[str] = CATEGORIZED_SKILLS.get("Soft Skills", set())
+HARD_SKILLS_DB: Set[str] = set().union(*[skills for cat, skills in CATEGORIZED_SKILLS.items() if cat != "Soft Skills"])
+
+# Complete flattened skills set
+SKILLS_DB: Set[str] = HARD_SKILLS_DB.union(SOFT_SKILLS_DB)
+
+# Ambiguous short tokens that require strict case or technical context matching
+AMBIGUOUS_SHORT_SKILLS: Set[str] = {"go", "r", "c"}
 
 # Canonical name mappings for normalization (e.g. react.js -> react)
-CANONICAL_SKILLS = {
+CANONICAL_SKILLS: Dict[str, str] = {
     "react.js": "react",
     "reactjs": "react",
     "vue.js": "vue",
@@ -66,7 +47,23 @@ CANONICAL_SKILLS = {
     "postgres": "postgresql",
     "scikit-learn": "scikit-learn", "sklearn": "scikit-learn",
     "gcp": "google cloud",
-    "amazon web services": "aws"
+    "amazon web services": "aws",
+    "golang": "go",
+    "ga4": "google analytics",
+    "gtm": "google tag manager",
+    "search engine optimization": "seo",
+    "pay per click": "ppc"
+}
+
+# Generic English stopwords that should NEVER be extracted as hard skills unless in SKILLS_DB
+GENERIC_STOPWORDS: Set[str] = {
+    "a", "an", "the", "and", "or", "but", "if", "because", "as", "until", "while", "of", "at",
+    "by", "for", "with", "about", "against", "between", "into", "through", "during", "before",
+    "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over",
+    "under", "again", "further", "then", "once", "here", "there", "when", "where", "why",
+    "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such",
+    "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "can", "will",
+    "just", "should", "now", "go", "going", "went", "gone"
 }
 
 
@@ -82,4 +79,10 @@ def get_skill_category(skill: str) -> str:
     for category, skills in CATEGORIZED_SKILLS.items():
         if skill_lower in skills or any(normalize_skill(s) == skill_lower for s in skills):
             return category
-    return "Other Technical"
+    return "General / Technical"
+
+
+def is_soft_skill(skill: str) -> bool:
+    """Checks if a skill belongs to the Soft Skills category."""
+    norm = normalize_skill(skill)
+    return norm in SOFT_SKILLS_DB or get_skill_category(skill) == "Soft Skills"

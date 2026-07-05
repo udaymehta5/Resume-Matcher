@@ -1,41 +1,10 @@
 import React from 'react';
 import { RadialBarChart, RadialBar, ResponsiveContainer, PolarAngleAxis } from 'recharts';
-import { Award, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { Award } from 'lucide-react';
+import { getMatchLabel } from '../utils/matchScore';
 
 export default function ScoreGauge({ score, wordCount }) {
-  // Determine color and status badge based on hybrid match score percentage
-  const getScoreStatus = (val) => {
-    if (val >= 75) {
-      return {
-        label: 'Strong Match',
-        color: '#10b981',
-        textColor: 'text-emerald-700 dark:text-emerald-400',
-        bgColor: 'bg-emerald-500/10',
-        borderColor: 'border-emerald-500/30',
-        icon: CheckCircle,
-      };
-    } else if (val >= 50) {
-      return {
-        label: 'Moderate Match',
-        color: '#f59e0b',
-        textColor: 'text-amber-700 dark:text-amber-400',
-        bgColor: 'bg-amber-500/10',
-        borderColor: 'border-amber-500/30',
-        icon: AlertTriangle,
-      };
-    } else {
-      return {
-        label: 'Weak Match',
-        color: '#f43f5e',
-        textColor: 'text-rose-700 dark:text-rose-400',
-        bgColor: 'bg-rose-500/10',
-        borderColor: 'border-rose-500/30',
-        icon: XCircle,
-      };
-    }
-  };
-
-  const status = getScoreStatus(score);
+  const status = getMatchLabel(score);
   const StatusIcon = status.icon;
 
   const data = [
@@ -95,7 +64,7 @@ export default function ScoreGauge({ score, wordCount }) {
             {score}<span className="text-xl text-slate-500 font-bold">%</span>
           </span>
           <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-wide uppercase mt-0.5">
-            70% Skills + 30% TF-IDF
+            Hybrid Weighted Score
           </span>
         </div>
       </div>

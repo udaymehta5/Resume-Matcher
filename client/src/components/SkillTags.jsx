@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
-import { CheckCircle2, XCircle, Search } from 'lucide-react';
+import { CheckCircle2, XCircle, Search, Sparkles } from 'lucide-react';
 
-export default function SkillTags({ matchedSkills = [], missingSkills = [], categorizedMatched = {}, categorizedMissing = {} }) {
+export default function SkillTags({
+  matchedSkills = [],
+  missingSkills = [],
+  matchedHardSkills = [],
+  missingHardSkills = [],
+  matchedSoftSkills = [],
+  missingSoftSkills = [],
+  categorizedMatched = {},
+  categorizedMissing = {}
+}) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
@@ -12,6 +21,11 @@ export default function SkillTags({ matchedSkills = [], missingSkills = [], cate
     'Databases & Caching',
     'Cloud & DevOps',
     'Tools & Methodology',
+    'Marketing & Growth',
+    'Sales & Business Development',
+    'UI/UX & Design',
+    'Finance & Accounting',
+    'Operations & HR',
     'Soft Skills'
   ];
 
@@ -30,8 +44,11 @@ export default function SkillTags({ matchedSkills = [], missingSkills = [], cate
   const filteredMatched = filterSkills(matchedSkills, categorizedMatched);
   const filteredMissing = filterSkills(missingSkills, categorizedMissing);
 
-  const totalSkills = matchedSkills.length + missingSkills.length;
-  const matchRate = totalSkills > 0 ? Math.round((matchedSkills.length / totalSkills) * 100) : 0;
+  const activeMatchedHard = matchedHardSkills.length > 0 ? matchedHardSkills : matchedSkills;
+  const activeMissingHard = missingHardSkills.length > 0 ? missingHardSkills : missingSkills;
+
+  const totalHardSkills = activeMatchedHard.length + activeMissingHard.length;
+  const hardMatchRate = totalHardSkills > 0 ? Math.round((activeMatchedHard.length / totalHardSkills) * 100) : 0;
 
   return (
     <div className="glass-panel p-6 rounded-2xl space-y-6">
@@ -39,13 +56,13 @@ export default function SkillTags({ matchedSkills = [], missingSkills = [], cate
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-            <span>Skill Keyword Extraction</span>
+            <span>Skill Keyword Extraction & Categorization</span>
             <span className="text-xs bg-linkedin-50 dark:bg-indigo-500/10 border border-linkedin-200 dark:border-indigo-500/20 text-linkedin-700 dark:text-indigo-400 font-bold px-2 py-0.5 rounded-full">
-              {matchRate}% Coverage ({matchedSkills.length}/{totalSkills})
+              {hardMatchRate}% Hard Skill Coverage ({activeMatchedHard.length}/{totalHardSkills})
             </span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Categorized via spaCy NLP entity matching & canonical skill dictionary
+            Hard technical tools and soft skills categorized via spaCy NLP and domain-adaptive taxonomy
           </p>
         </div>
 
@@ -92,14 +109,21 @@ export default function SkillTags({ matchedSkills = [], missingSkills = [], cate
 
           <div className="flex flex-wrap gap-2 pt-1 max-h-56 overflow-y-auto pr-1">
             {filteredMatched.length > 0 ? (
-              filteredMatched.map((skill, idx) => (
-                <span
-                  key={idx}
-                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors"
-                >
-                  {skill}
-                </span>
-              ))
+              filteredMatched.map((skill, idx) => {
+                const isSoft = matchedSoftSkills.includes(skill) || categorizedMatched['Soft Skills']?.includes(skill);
+                return (
+                  <span
+                    key={idx}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                      isSoft
+                        ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30'
+                        : 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
+                    }`}
+                  >
+                    {skill} {isSoft ? '(soft skill)' : ''}
+                  </span>
+                );
+              })
             ) : (
               <p className="text-xs text-slate-400 italic py-2">
                 {searchTerm || activeCategory !== 'All' ? 'No matching skills in this category' : 'No required skills matched'}
@@ -119,14 +143,21 @@ export default function SkillTags({ matchedSkills = [], missingSkills = [], cate
 
           <div className="flex flex-wrap gap-2 pt-1 max-h-56 overflow-y-auto pr-1">
             {filteredMissing.length > 0 ? (
-              filteredMissing.map((skill, idx) => (
-                <span
-                  key={idx}
-                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-800 dark:text-rose-300 border border-rose-500/30 hover:bg-rose-500/20 transition-colors"
-                >
-                  {skill}
-                </span>
-              ))
+              filteredMissing.map((skill, idx) => {
+                const isSoft = missingSoftSkills.includes(skill) || categorizedMissing['Soft Skills']?.includes(skill);
+                return (
+                  <span
+                    key={idx}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                      isSoft
+                        ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30'
+                        : 'bg-rose-500/10 text-rose-800 dark:text-rose-300 border-rose-500/30 hover:bg-rose-500/20'
+                    }`}
+                  >
+                    {skill} {isSoft ? '(soft skill)' : ''}
+                  </span>
+                );
+              })
             ) : (
               <p className="text-xs text-slate-400 italic py-2">
                 {searchTerm || activeCategory !== 'All' ? 'No missing skills in this category' : 'No missing skills detected! Great fit!'}

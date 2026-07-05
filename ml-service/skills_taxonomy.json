@@ -1,0 +1,75 @@
+{
+  "Programming Languages": [
+    "python", "javascript", "typescript", "java", "c++", "c#", "golang", "go", "rust", "ruby", 
+    "php", "swift", "kotlin", "scala", "r", "matlab", "perl", "sql", "bash", "powershell", "html", "css",
+    "sass", "less", "solidity", "dart"
+  ],
+  "Frameworks & Web": [
+    "react", "react.js", "reactjs", "vue", "vue.js", "vuejs", "angular", "next.js", "nextjs",
+    "nuxt.js", "svelte", "ember.js", "tailwind css", "tailwindcss", "bootstrap", "material ui", 
+    "chakra ui", "jquery", "webgl", "three.js", "redux", "mobx", "zustand", "vite", "webpack",
+    "node.js", "nodejs", "express", "express.js", "fastapi", "django", "flask", "spring", 
+    "spring boot", "ruby on rails", "rails", "asp.net", "laravel", "nest.js", "nestjs", 
+    "graphql", "rest api", "restful api", "grpc", "websockets", "microservices"
+  ],
+  "Databases & Caching": [
+    "mongodb", "postgresql", "postgres", "mysql", "sqlite", "oracle", "sql server", "redis", 
+    "elasticsearch", "dynamodb", "cassandra", "neo4j", "firebase", "supabase", "mariadb", 
+    "prisma", "sequelize", "mongoose"
+  ],
+  "Cloud & DevOps": [
+    "aws", "amazon web services", "azure", "google cloud", "gcp", "docker", "kubernetes", 
+    "terraform", "ansible", "jenkins", "github actions", "gitlab ci", "circleci", "nginx", 
+    "apache", "linux", "unix", "ci/cd", "prometheus", "grafana", "serverless", "cloudformation"
+  ],
+  "Machine Learning & AI": [
+    "machine learning", "deep learning", "nlp", "natural language processing", "data science", 
+    "scikit-learn", "sklearn", "tensorflow", "pytorch", "keras", "opencv", "spacy", "nltk", 
+    "pandas", "numpy", "scipy", "matplotlib", "seaborn", "data analytics", "data mining", 
+    "computer vision", "big data", "spark", "hadoop", "tableau", "power bi", "feature engineering"
+  ],
+  "Tools & Methodology": [
+    "git", "github", "gitlab", "bitbucket", "jira", "confluence", "trello", "postman", "swagger", 
+    "agile", "scrum", "kanban", "test driven development", "tdd", "unit testing", "jest", 
+    "cypress", "selenium", "pytest", "mocha", "chai", "object oriented programming", "oop"
+  ],
+  "Marketing & Growth": [
+    "seo", "search engine optimization", "sem", "google ads", "meta ads", "facebook ads", "hubspot",
+    "google analytics", "ga4", "gtm", "google tag manager", "cac", "roas", "a/b testing",
+    "email marketing", "marketing automation", "content strategy", "social media marketing",
+    "brand strategy", "crm", "salesforce", "influencer marketing", "canva", "adobe creative suite",
+    "copywriting", "lead generation", "ppc", "pay per click", "performance marketing",
+    "digital marketing", "growth hacking", "content marketing", "affiliate marketing",
+    "customer acquisition", "e-commerce marketing", "market research", "direct mail"
+  ],
+  "Sales & Business Development": [
+    "b2b sales", "b2c sales", "cold calling", "account management", "pipeline management",
+    "solution selling", "lead qualification", "sales operations", "deal closing",
+    "territory management", "outbound sales", "inbound sales", "saas sales",
+    "key account management", "sales strategy", "enterprise sales", "customer success"
+  ],
+  "UI/UX & Design": [
+    "ui design", "ux design", "figma", "adobe xd", "photoshop", "illustrator", "indesign",
+    "wireframing", "prototyping", "user research", "information architecture", "graphic design",
+    "interaction design", "visual design", "motion design", "design systems", "typography", "user testing"
+  ],
+  "Finance & Accounting": [
+    "financial modeling", "financial analysis", "forecasting", "budgeting", "accounting",
+    "quickbooks", "sap", "bookkeeping", "financial reporting", "valuation", "auditing",
+    "risk management", "cash flow management", "excel modeling", "portfolio management",
+    "tax preparation", "erp", "corporate finance"
+  ],
+  "Operations & HR": [
+    "operations management", "supply chain", "logistics", "process optimization",
+    "talent acquisition", "recruiting", "onboarding", "performance management",
+    "inventory management", "vendor management", "resource allocation", "change management",
+    "hris", "compliance"
+  ],
+  "Soft Skills": [
+    "communication", "leadership", "problem solving", "teamwork", "collaboration", "critical thinking", 
+    "time management", "project management", "adaptability", "creativity", "emotional intelligence", 
+    "conflict resolution", "decision making", "negotiation", "presentation skills", "stakeholder management", 
+    "cross-functional teamwork", "mentorship", "strategic thinking", "analytical skills", "troubleshooting",
+    "customer focus", "agile project management", "scrum master", "product management"
+  ]
+}

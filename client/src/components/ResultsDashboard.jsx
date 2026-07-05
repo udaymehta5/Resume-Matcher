@@ -1,9 +1,10 @@
 import React from 'react';
-import { ArrowLeft, FileText, Download, RefreshCw, CheckCircle2, AlertTriangle, XCircle, Award, Sparkles } from 'lucide-react';
+import { ArrowLeft, FileText, Download, RefreshCw, Sparkles, AlertCircle } from 'lucide-react';
 import ScoreGauge from './ScoreGauge';
 import SkillTags from './SkillTags';
 import KeywordChart from './KeywordChart';
 import ResumeHealthCard from './ResumeHealthCard';
+import { getMatchLabel } from '../utils/matchScore';
 
 export default function ResultsDashboard({ result, onReset }) {
   if (!result) return null;
@@ -13,6 +14,18 @@ export default function ResultsDashboard({ result, onReset }) {
     matchScore,
     matchedSkills = [],
     missingSkills = [],
+    matched_hard_skills,
+    matchedHardSkills = matched_hard_skills || [],
+    missing_hard_skills,
+    missingHardSkills = missing_hard_skills || [],
+    matched_soft_skills,
+    matchedSoftSkills = matched_soft_skills || [],
+    missing_soft_skills,
+    missingSoftSkills = missing_soft_skills || [],
+    hard_skills_coverage,
+    hardSkillsCoverage = hard_skills_coverage,
+    low_skill_count_warning,
+    lowSkillCountWarning = low_skill_count_warning,
     categorizedMatched = {},
     categorizedMissing = {},
     resumeWordCount = 0,
@@ -22,51 +35,17 @@ export default function ResultsDashboard({ result, onReset }) {
     createdAt
   } = result;
 
-  const totalSkills = matchedSkills.length + missingSkills.length;
-  const matchRate = totalSkills > 0 ? Math.round((matchedSkills.length / totalSkills) * 100) : 0;
+  // Use Hard Skills for primary technical coverage metric if available
+  const activeMatchedHard = matchedHardSkills.length > 0 || missingHardSkills.length > 0 ? matchedHardSkills : matchedSkills;
+  const activeMissingHard = matchedHardSkills.length > 0 || missingHardSkills.length > 0 ? missingHardSkills : missingSkills;
+  
+  const totalHardSkills = activeMatchedHard.length + activeMissingHard.length;
+  const hardMatchRate = hardSkillsCoverage !== undefined 
+    ? Math.round(hardSkillsCoverage) 
+    : (totalHardSkills > 0 ? Math.round((activeMatchedHard.length / totalHardSkills) * 100) : 0);
 
-  // Determine overall Job Match Fit Verdict
-  const getMatchVerdict = (score, matched, missing) => {
-    if (score >= 80 || (matched.length >= 6 && missing.length <= 2)) {
-      return {
-        verdict: 'PERFECT MATCH FOR THIS JOB',
-        subtext: 'This candidate is an exceptional fit. High keyword overlap and satisfies almost all core technical and soft skill requirements.',
-        color: 'text-emerald-700 dark:text-emerald-400',
-        bg: 'bg-emerald-500/10',
-        border: 'border-emerald-500/30',
-        icon: CheckCircle2,
-      };
-    } else if (score >= 60 || matched.length > missing.length) {
-      return {
-        verdict: 'STRONG CANDIDATE FIT',
-        subtext: 'The candidate meets key foundational requirements for the role. Moderate overlap with job description keywords.',
-        color: 'text-linkedin-700 dark:text-indigo-400',
-        bg: 'bg-linkedin-50 dark:bg-indigo-500/10',
-        border: 'border-linkedin-200 dark:border-indigo-500/30',
-        icon: Award,
-      };
-    } else if (score >= 40) {
-      return {
-        verdict: 'MODERATE / PARTIAL MATCH',
-        subtext: `Candidate possesses some relevant experience but is missing critical skills (${missing.slice(0, 3).join(', ')}).`,
-        color: 'text-amber-700 dark:text-amber-400',
-        bg: 'bg-amber-500/10',
-        border: 'border-amber-500/30',
-        icon: AlertTriangle,
-      };
-    } else {
-      return {
-        verdict: 'LOW MATCH FOR THIS JOB',
-        subtext: 'Low textual and skill overlap with the target job description. Lacks key required technologies.',
-        color: 'text-rose-700 dark:text-rose-400',
-        bg: 'bg-rose-500/10',
-        border: 'border-rose-500/30',
-        icon: XCircle,
-      };
-    }
-  };
-
-  const verdict = getMatchVerdict(matchScore, matchedSkills, missingSkills);
+  // Single Canonical Source of Truth for Match Labels
+  const verdict = getMatchLabel(matchScore);
   const VerdictIcon = verdict.icon;
 
   const handlePrint = () => {
@@ -115,17 +94,25 @@ export default function ResultsDashboard({ result, onReset }) {
         </div>
       </div>
 
+      {/* Warning banner if low skill count detected in JD */}
+      {lowSkillCountWarning && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex items-center space-x-2.5 font-semibold">
+          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <span>{lowSkillCountWarning}</span>
+        </div>
+      )}
+
       {/* Prominent Job Match Verdict Banner */}
-      <div className={`p-5 rounded-2xl border ${verdict.bg} ${verdict.border} flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm`}>
+      <div className={`p-5 rounded-2xl border ${verdict.bgColor} ${verdict.borderColor} flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm`}>
         <div className="flex items-start space-x-3.5">
-          <div className={`p-2.5 rounded-xl ${verdict.bg} border ${verdict.border} ${verdict.color}`}>
+          <div className={`p-2.5 rounded-xl ${verdict.bgColor} border ${verdict.borderColor} ${verdict.textColor}`}>
             <VerdictIcon className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
               <span className="text-xs uppercase font-extrabold tracking-wider text-slate-500 dark:text-slate-400">Job Fit Evaluation:</span>
-              <h3 className={`text-base font-black tracking-tight ${verdict.color}`}>
-                {verdict.verdict} ({matchScore}% Match)
+              <h3 className={`text-base font-black tracking-tight ${verdict.textColor}`}>
+                {verdict.verdictText} ({matchScore}% Match)
               </h3>
             </div>
             <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 font-medium max-w-3xl">
@@ -137,9 +124,9 @@ export default function ResultsDashboard({ result, onReset }) {
         <div className="flex items-center space-x-3 flex-shrink-0 bg-white/80 dark:bg-slate-900/80 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
           <Sparkles className="w-4 h-4 text-linkedin-600 dark:text-indigo-400" />
           <div className="text-right">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-medium">Skills Coverage</span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-medium">Hard Skills Coverage</span>
             <span className="text-sm font-black text-slate-900 dark:text-white">
-              {matchedSkills.length} of {totalSkills} Skills ({matchRate}%)
+              {activeMatchedHard.length} of {totalHardSkills} Skills ({hardMatchRate}%)
             </span>
           </div>
         </div>
@@ -160,32 +147,35 @@ export default function ResultsDashboard({ result, onReset }) {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Match Percentage</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Hybrid Score</span>
               <span className="text-2xl font-extrabold text-linkedin-600 dark:text-indigo-400">{matchScore}%</span>
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Skills Coverage</span>
-              <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{matchRate}%</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Hard Skills Coverage</span>
+              <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{hardMatchRate}%</span>
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 col-span-2 sm:col-span-1">
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Skills Match Count</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Hard Skills Match</span>
               <span className="text-2xl font-extrabold text-slate-900 dark:text-slate-200">
-                <span className="text-emerald-600 dark:text-emerald-400">{matchedSkills.length}</span> / <span className="text-rose-600 dark:text-rose-400">{missingSkills.length}</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{activeMatchedHard.length}</span> / <span className="text-rose-600 dark:text-rose-400">{activeMissingHard.length}</span>
               </span>
               <span className="text-[10px] text-slate-500 block">Matched / Missing</span>
             </div>
           </div>
 
           {/* Actionable Skill Advice */}
-          <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-            {matchedSkills.length > 0 ? (
-              <p>✅ <strong>Matched Key Skills:</strong> {matchedSkills.slice(0, 8).join(', ')}.</p>
-            ) : null}
-            {missingSkills.length > 0 ? (
-              <p className="mt-1 text-rose-700 dark:text-rose-400">⚠️ <strong>Missing Key Job Requirements:</strong> {missingSkills.slice(0, 6).join(', ')}.</p>
-            ) : null}
+          <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium space-y-1.5">
+            {activeMatchedHard.length > 0 && (
+              <p>✅ <strong>Matched Hard Skills:</strong> {activeMatchedHard.slice(0, 8).join(', ')}.</p>
+            )}
+            {activeMissingHard.length > 0 && (
+              <p className="text-rose-700 dark:text-rose-400">⚠️ <strong>Missing Key Job Requirements (Hard Skills):</strong> {activeMissingHard.slice(0, 6).join(', ')}.</p>
+            )}
+            {missingSoftSkills.length > 0 && (
+              <p className="text-amber-700 dark:text-amber-400 text-[11px]">💡 <strong>Soft Skills Note:</strong> Desired traits not explicitly mentioned in resume: {missingSoftSkills.join(', ')}.</p>
+            )}
           </div>
         </div>
       </div>
@@ -197,6 +187,10 @@ export default function ResultsDashboard({ result, onReset }) {
       <SkillTags
         matchedSkills={matchedSkills}
         missingSkills={missingSkills}
+        matchedHardSkills={matchedHardSkills}
+        missingHardSkills={missingHardSkills}
+        matchedSoftSkills={matchedSoftSkills}
+        missingSoftSkills={missingSoftSkills}
         categorizedMatched={categorizedMatched}
         categorizedMissing={categorizedMissing}
       />
