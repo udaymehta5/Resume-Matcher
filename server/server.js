@@ -44,8 +44,8 @@ const startServer = async () => {
     console.warn('⚠️ MongoDB Connection Notice: Running in memory mode (no DB persistence):', err.message);
   }
 
-  app.listen(PORT, () => {
-    console.log(`🚀 Express Backend Server listening on http://localhost:${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Express Backend Server listening on port ${PORT}`);
   });
 };
 
