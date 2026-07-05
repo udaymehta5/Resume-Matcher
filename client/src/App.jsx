@@ -123,7 +123,7 @@ export default function App() {
       {/* Footer */}
       <footer className="glass-panel border-t border-slate-200 dark:border-slate-900 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
         <p>
-          Resume Screening Classifier • Classical ML/NLP Stack (TF-IDF + Cosine Similarity + spaCy)
+          Resume Matcher • Classical ML/NLP Stack (TF-IDF + Cosine Similarity + spaCy)
         </p>
       </footer>
     </div>

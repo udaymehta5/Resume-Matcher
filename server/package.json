@@ -1,7 +1,7 @@
 {
-  "name": "resume-screener-server",
+  "name": "resume-matcher-server",
   "version": "1.0.0",
-  "description": "Node/Express backend for Resume Screener",
+  "description": "Node/Express backend for Resume Matcher",
   "main": "server.js",
   "type": "module",
   "scripts": {

@@ -1,6 +1,6 @@
-# 📄 Resume Screening Classifier (MERN + Python ML)
+# 📄 Resume Matcher (MERN + Python ML)
 
-A high-performance, full-stack Resume Screening application that matches a candidate's resume (PDF/DOCX) against a job description using classical Machine Learning and Natural Language Processing techniques (TF-IDF vectorization, Cosine Similarity, spaCy entity recognition, and Skill-Relevant Noise Filtering). 
+A high-performance, full-stack Resume Matcher application that matches a candidate's resume (PDF/DOCX) against a job description using classical Machine Learning and Natural Language Processing techniques (TF-IDF vectorization, Cosine Similarity, spaCy entity recognition, and Skill-Relevant Noise Filtering). 
 
 > **Strict Constraint Compliance:** Built without LLM APIs, Deep Learning, RAG, or vector databases. Pure mathematical ML using `scikit-learn` and `spaCy`.
 
@@ -37,7 +37,7 @@ To maximize match score accuracy and eliminate boilerplate noise (addresses, ref
 ## 📁 Repository Structure
 
 ```
-resume-screener/
+resume-matcher/
 ├── client/                  # React Frontend (Vite + Tailwind CSS + Recharts)
 │   ├── src/
 │   │   ├── api/             # Axios instance & API calls

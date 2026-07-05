@@ -11,7 +11,7 @@ ALLOWED_ORIGINS_ENV = os.getenv("ALLOWED_ORIGINS", "http://localhost:5000,http:/
 ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_ENV.split(",") if origin.strip()]
 
 app = FastAPI(
-    title="Resume Screener ML Microservice V2",
+    title="Resume Matcher ML Microservice V2",
     description="Classical ML/NLP microservice with TF-IDF match scoring, skill categorization, resume health diagnostics, and batch candidate ranking.",
     version="2.0.0"
 )
@@ -60,7 +60,7 @@ def validate_file(filename: str, file_bytes: bytes) -> None:
 def read_root():
     return {
         "status": "healthy",
-        "service": "Resume Screener ML Microservice V2",
+        "service": "Resume Matcher ML Microservice V2",
         "version": "2.0.0"
     }
 
